@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实验日志与周报管理</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500&display=swap');
+
+:root {
+  --bg: #14161b;
+  --surface: #1b1e25;
+  --card: #21242d;
+  --card-hover: #262a33;
+  --text: #e2e3e7;
+  --text-dim: #8b8d97;
+  --text-muted: #5c5e68;
+  --accent: #e2a83c;
+  --accent-glow: #f0c060;
+  --accent-dim: #8b6d2e;
+  --teal: #4d9e9a;
+  --teal-dim: #2a5452;
+  --danger: #d9556a;
+  --danger-dim: #6b2a35;
+  --success: #56a885;
+  --success-dim: #2a523f;
+  --info: #5b8db8;
+  --border: #2a2d38;
+  --border-light: #343844;
+  --radius: 6px;
+  --radius-lg: 10px;
+  --font: "DM Mono", "Cascadia Code", "Fira Code", "JetBrains Mono", "Microsoft YaHei", monospace;
+  --shadow: 0 2px 12px rgba(0,0,0,.3);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.45);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.65;
+  min-height: 100vh;
+  background-image:
+    linear-gradient(rgba(255,255,255,.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.012) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width:6px; }
+::-webkit-scrollbar-track { background:var(--bg); }
+::-webkit-scrollbar-thumb { background:var(--border-light); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--text-muted); }
+
+/* ── Header ── */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 18px 36px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.header-brand { display:flex; align-items:center; gap:14px; }
+.header-dot {
+  width: 8px; height: 8px;
+  background: var(--accent); border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent), 0 0 20px var(--accent-dim);
+  animation: pulse-dot 2.5s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%,100% { opacity:1; box-shadow: 0 0 8px var(--accent), 0 0 20px var(--accent-dim); }
+  50% { opacity:.5; box-shadow: 0 0 4px var(--accent), 0 0 10px var(--accent-dim); }
+}
+.header h1 { font-size:17px; font-weight:500; letter-spacing:.8px; color:var(--text); }
+.header .date-display { font-size:13px; color:var(--text-dim); letter-spacing:.4px; }
+
+/* ── Tabs ── */
+.tabs {
+  display:flex; background:var(--surface);
+  border-bottom:1px solid var(--border); padding:0 36px; gap:2px;
+}
+.tab-btn {
+  padding:14px 32px; border:none; background:none; font-size:14px;
+  cursor:pointer; color:var(--text-dim); font-family:var(--font);
+  letter-spacing:.5px; position:relative; transition:all .25s;
+}
+.tab-btn::after {
+  content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%);
+  width:0; height:2px; background:var(--accent); transition:width .25s;
+  box-shadow: 0 0 6px var(--accent-dim);
+}
+.tab-btn:hover { color:var(--text); }
+.tab-btn.active { color:var(--accent); }
+.tab-btn.active::after { width:60%; }
+
+/* ── Main ── */
+.main { max-width:1140px; margin:28px auto; padding:0 28px; }
+.tab-content { display:none; animation: fadeSlide .35s ease; }
+.tab-content.active { display:block; }
+@keyframes fadeSlide {
+  from { opacity:0; transform:translateY(8px); }
+  to { opacity:1; transform:translateY(0); }
+}
+
+/* ── Cards ── */
+.card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--radius-lg); padding:24px; margin-bottom:18px;
+  box-shadow:var(--shadow); transition:border-color .2s, box-shadow .2s;
+}
+.card:hover { border-color:var(--border-light); box-shadow:var(--shadow-lg); }
+.card-header {
+  display:flex; align-items:center; gap:10px; margin-bottom:18px;
+  padding-bottom:12px; border-bottom:1px solid var(--border);
+}
+.card-header .card-icon { font-size:16px; opacity:.7; }
+.card-header h3 { font-size:14px; font-weight:500; color:var(--text); letter-spacing:.4px; }
+
+/* ── Forms ── */
+.form-row { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+input, textarea, select {
+  font-family:var(--font); font-size:13px; padding:10px 14px;
+  border:1px solid var(--border); border-radius:var(--radius);
+  outline:none; transition:all .2s;
+  background:var(--surface); color:var(--text);
+}
+input:focus, textarea:focus, select:focus {
+  border-color:var(--accent-dim); box-shadow:0 0 0 2px rgba(226,168,60,.08);
+  background:var(--bg);
+}
+input::placeholder, textarea::placeholder { color:var(--text-muted); }
+input { flex:1; min-width:180px; }
+textarea { width:100%; min-height:80px; resize:vertical; }
+select {
+  min-width:110px; cursor:pointer;
+  appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b8d97' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 10px center; padding-right:32px;
+}
+input[type="date"] { color-scheme:dark; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter:invert(.7); cursor:pointer; }
+input[type="file"] { display:none; }
+
+/* ── Buttons ── */
+.btn {
+  padding:10px 22px; border:1px solid transparent; border-radius:var(--radius);
+  font-size:13px; cursor:pointer; font-family:var(--font); letter-spacing:.4px;
+  transition:all .2s; font-weight:500; white-space:nowrap;
+}
+.btn-primary {
+  background:var(--accent); color:#1a1d23; border-color:var(--accent);
+  box-shadow:0 0 12px rgba(226,168,60,.15);
+}
+.btn-primary:hover { background:var(--accent-glow); box-shadow:0 0 20px rgba(226,168,60,.25); transform:translateY(-1px); }
+.btn-primary:active { transform:translateY(0); }
+.btn-sm { padding:5px 14px; font-size:12px; letter-spacing:.2px; }
+.btn-outline {
+  background:transparent; border-color:var(--border-light); color:var(--text-dim);
+}
+.btn-outline:hover { border-color:var(--accent-dim); color:var(--accent); background:rgba(226,168,60,.04); }
+.btn-danger {
+  background:transparent; border-color:var(--danger-dim); color:var(--danger);
+}
+.btn-danger:hover { background:var(--danger-dim); border-color:var(--danger); }
+.btn-success {
+  background:var(--success); color:#fff; border-color:var(--success);
+  box-shadow:0 0 12px rgba(86,168,133,.15);
+}
+.btn-success:hover { box-shadow:0 0 24px rgba(86,168,133,.3); transform:translateY(-1px); }
+
+/* ── Todo Items ── */
+.todo-item {
+  display:flex; align-items:center; gap:12px; padding:12px 0;
+  border-bottom:1px solid var(--border);
+  transition:background .15s;
+}
+.todo-item:last-child { border-bottom:none; }
+.todo-item:hover { background:rgba(255,255,255,.015); margin:0 -8px; padding-left:8px; padding-right:8px; border-radius:4px; }
+
+/* Custom checkbox */
+.todo-check { display:none; }
+.todo-check + label {
+  width:18px; height:18px; min-width:18px; border:2px solid var(--border-light);
+  border-radius:3px; cursor:pointer; transition:all .2s; position:relative;
+}
+.todo-check:checked + label {
+  background:var(--teal); border-color:var(--teal);
+  box-shadow:0 0 6px rgba(77,158,154,.3);
+}
+.todo-check:checked + label::after {
+  content:''; position:absolute; left:4px; top:1px;
+  width:5px; height:9px; border:solid #fff; border-width:0 2px 2px 0;
+  transform:rotate(45deg);
+}
+.todo-item .content { flex:1; font-size:13px; }
+.todo-item .content.done { text-decoration:line-through; color:var(--text-muted); opacity:.5; }
+.todo-item .meta { font-size:11px; color:var(--text-muted); white-space:nowrap; letter-spacing:.3px; }
+
+/* Badges */
+.badge { display:inline-block; padding:3px 10px; border-radius:3px; font-size:10px;
+  font-weight:500; letter-spacing:.6px; text-transform:uppercase; }
+.badge-todo { background:rgba(91,141,184,.15); color:var(--info); border:1px solid rgba(91,141,184,.25); }
+.badge-experiment { background:rgba(226,168,60,.12); color:var(--accent); border:1px solid rgba(226,168,60,.2); }
+.badge-done { background:rgba(86,168,133,.12); color:var(--success); border:1px solid rgba(86,168,133,.2); }
+
+/* ── Drop Zone ── */
+.drop-zone {
+  border:2px dashed var(--border-light); border-radius:var(--radius-lg);
+  padding:32px 24px; text-align:center; transition:all .3s;
+  background:var(--surface); cursor:pointer;
+}
+.drop-zone.drag-over {
+  border-color:var(--accent); background:rgba(226,168,60,.04);
+  box-shadow:inset 0 0 40px rgba(226,168,60,.04), 0 0 24px rgba(226,168,60,.08);
+}
+.drop-zone .dz-icon { font-size:32px; margin-bottom:8px; opacity:.5; }
+.drop-zone .dz-text { font-size:13px; color:var(--text-dim); letter-spacing:.3px; }
+.drop-zone .dz-text strong { color:var(--accent); font-weight:500; }
+.upload-queue { margin-top:12px; }
+.upload-queue .queue-item {
+  display:flex; align-items:center; gap:10px;
+  padding:8px 14px; background:rgba(226,168,60,.05);
+  border:1px solid var(--border); border-radius:var(--radius);
+  margin-bottom:6px; font-size:12px;
+}
+.upload-queue .queue-item .q-name { flex:1; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.upload-queue .queue-item .q-status { font-size:11px; color:var(--text-muted); }
+.upload-queue .queue-item .q-remove {
+  cursor:pointer; color:var(--text-muted); font-weight:bold;
+  padding:0 4px; transition:color .15s;
+}
+.upload-queue .queue-item .q-remove:hover { color:var(--danger); }
+
+/* File row */
+.file-link { font-size:13px; color:var(--teal); text-decoration:none; }
+.file-link:hover { color:var(--accent); }
+
+/* ── Week Grid ── */
+.week-grid { display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-bottom:20px; }
+.day-card {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:14px; min-height:130px; transition:all .2s;
+}
+.day-card:hover { border-color:var(--border-light); }
+.day-card.today {
+  border-color:var(--accent-dim);
+  background:linear-gradient(180deg, rgba(226,168,60,.06) 0%, var(--card) 60%);
+  box-shadow:0 0 20px rgba(226,168,60,.06);
+}
+.day-card .day-label { font-size:10px; color:var(--text-muted); margin-bottom:8px; letter-spacing:.6px; text-transform:uppercase; }
+.day-card .day-date { font-weight:500; font-size:15px; margin-bottom:10px; color:var(--text); }
+.day-card.today .day-date { color:var(--accent); }
+.day-card .day-item {
+  font-size:11px; padding:3px 0; white-space:nowrap;
+  overflow:hidden; text-overflow:ellipsis; color:var(--text-dim);
+}
+.day-card .day-item.done { text-decoration:line-through; color:var(--text-muted); }
+
+/* ── Assessment ── */
+.assessment-group { display:flex; gap:10px; }
+.assessment-option { flex:1; }
+.assessment-option input[type="radio"] { display:none; }
+.assessment-option label {
+  display:block; text-align:center; padding:14px;
+  border:1px solid var(--border); border-radius:var(--radius);
+  cursor:pointer; font-weight:500; font-size:13px; letter-spacing:.4px;
+  transition:all .25s; color:var(--text-dim);
+}
+.assessment-option label:hover { border-color:var(--border-light); color:var(--text); }
+.assessment-option input:checked + label {
+  border-color:var(--accent); background:rgba(226,168,60,.06); color:var(--accent);
+  box-shadow:0 0 12px rgba(226,168,60,.08);
+}
+
+/* ── Report Section Editors ── */
+.section-editor { margin-bottom:0; }
+.section-editor textarea { min-height:100px; font-size:13px; }
+
+.generate-bar { text-align:center; padding:24px; }
+.generate-bar .btn { font-size:15px; padding:14px 44px; letter-spacing:.6px; }
+.result-box {
+  padding:18px; background:rgba(86,168,133,.06); border-radius:var(--radius);
+  margin-top:14px; border:1px solid var(--success-dim); font-size:13px;
+}
+.result-box a { color:var(--teal); font-weight:500; margin-right:18px; text-decoration:none; }
+.result-box a:hover { color:var(--accent); }
+
+/* ── Milestones ── */
+.milestone-item {
+  margin-bottom:12px; padding:14px; background:var(--surface);
+  border:1px solid var(--border); border-radius:var(--radius);
+}
+.milestone-item strong { font-size:13px; color:var(--text); font-weight:500; }
+.milestone-item label { font-size:12px; color:var(--text-dim); display:inline-flex; align-items:center; gap:6px; }
+.milestone-item input[type="date"] { width:140px; }
+
+/* ── Empty State ── */
+.empty { text-align:center; padding:40px; color:var(--text-muted); font-size:13px; letter-spacing:.3px; }
+
+/* ── Experiment summary ── */
+.exp-summary {
+  padding:10px 0; border-bottom:1px solid var(--border);
+  font-size:13px; transition:background .15s;
+}
+.exp-summary:last-child { border-bottom:none; }
+.exp-summary:hover { background:rgba(255,255,255,.01); }
+
+/* ── Modal ── */
+.modal-overlay {
+  display:none; position:fixed; top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.6); z-index:100;
+  justify-content:center;align-items:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.show { display:flex; }
+.modal {
+  background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg);
+  padding:28px; width:480px; max-width:92vw; max-height:80vh; overflow-y:auto;
+  box-shadow:var(--shadow-lg); animation:modalIn .25s ease;
+}
+@keyframes modalIn {
+  from { opacity:0; transform:scale(.95) translateY(10px); }
+  to { opacity:1; transform:scale(1) translateY(0); }
+}
+.modal h3 { margin-bottom:18px; font-size:15px; font-weight:500; color:var(--accent); }
+.modal .form-group { margin-bottom:14px; }
+.modal .form-group label { display:block; font-size:12px; color:var(--text-dim); margin-bottom:6px; letter-spacing:.3px; }
+.modal .btn { margin-right:10px; }
+
+/* ── Utility ── */
+.text-dim { color:var(--text-dim); font-size:12px; }
+.text-muted { color:var(--text-muted); font-size:11px; letter-spacing:.3px; }
+.mt-sm { margin-top:10px; }
+.mb-sm { margin-bottom:10px; }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .week-grid { grid-template-columns: repeat(3, 1fr); }
+  .form-row { flex-direction:column; }
+  .header { padding:14px 20px; }
+  .tabs { padding:0 12px; }
+  .tab-btn { padding:12px 18px; font-size:12px; }
+  .main { padding:0 14px; margin:18px auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-brand">
+    <div class="header-dot"></div>
+    <h1>实验日志 · 周报管理</h1>
+  </div>
+  <span class="date-display" id="headerDate"></span>
+</div>
+
+<div class="tabs">
+  <button class="tab-btn active" data-tab="today">今日记录</button>
+  <button class="tab-btn" data-tab="week">本周概览</button>
+  <button class="tab-btn" data-tab="report">周报生成</button>
+</div>
+
+<div class="main">
+
+<!-- ═══ Tab 1: 今日记录 ═══ -->
+<div class="tab-content active" id="tab-today">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">＋</span>
+      <h3>添加待办 / 实验</h3>
+    </div>
+    <div class="form-row">
+      <input type="text" id="todoInput" placeholder="输入待办或实验内容…">
+      <select id="todoCategory">
+        <option value="todo">待办</option>
+        <option value="experiment">实验</option>
+      </select>
+      <button class="btn btn-primary" onclick="addTodo()">添加</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">◉</span>
+      <h3>今日记录 &nbsp;<span style="color:var(--accent);font-size:12px;" id="todayDate"></span></h3>
+    </div>
+    <div id="todoList"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">◆</span>
+      <h3>快速实验记录</h3>
+    </div>
+    <div class="form-row mb-sm">
+      <input type="text" id="expTitle" placeholder="实验标题" style="flex:2;">
+      <input type="text" id="expEquipment" placeholder="使用设备" style="flex:1;">
+    </div>
+    <textarea id="expDesc" placeholder="实验描述"></textarea>
+    <textarea id="expResults" placeholder="实验结果" style="margin-top:8px;"></textarea>
+    <div class="form-row" style="margin-top:10px;">
+      <input type="text" id="expTags" placeholder="标签（逗号分隔）" style="flex:1;">
+      <button class="btn btn-primary" onclick="addExperiment()">保存实验记录</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">⬇</span>
+      <h3>实验数据文件</h3>
+    </div>
+    <div class="drop-zone" id="dropZone">
+      <div class="dz-icon">▣</div>
+      <div class="dz-text">拖拽文件到此处，或 <strong>点击选择文件</strong></div>
+      <div class="text-muted mt-sm">支持批量上传，任意格式 · 仅储存不做分析 · Ctrl+V 可粘贴剪贴板图片</div>
+      <input type="file" id="fileInput" multiple>
+    </div>
+    <div class="form-row" style="margin:12px 0;">
+      <select id="fileLinkType">
+        <option value="">关联到实验记录（可选）</option>
+      </select>
+    </div>
+    <div class="upload-queue" id="uploadQueue"></div>
+    <button class="btn btn-primary" id="uploadBtn" onclick="uploadFiles()" style="display:none;margin-bottom:14px;">上传全部文件</button>
+    <div id="todayFiles" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<!-- ═══ Tab 2: 本周概览 ═══ -->
+<div class="tab-content" id="tab-week">
+  <div class="week-grid" id="weekGrid"></div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">▤</span>
+      <h3>本周实验记录</h3>
+    </div>
+    <div id="weekExperiments"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">◈</span>
+      <h3>课题进展自评</h3>
+    </div>
+    <div class="form-row mb-sm">
+      <input type="text" id="assessmentTopic" value="基于二维材料的离子学器件研究" style="flex:2;">
+    </div>
+    <div class="assessment-group">
+      <div class="assessment-option">
+        <input type="radio" name="assessment" value="好" id="assess-good">
+        <label for="assess-good">好</label>
+      </div>
+      <div class="assessment-option">
+        <input type="radio" name="assessment" value="中" id="assess-mid">
+        <label for="assess-mid">中</label>
+      </div>
+      <div class="assessment-option">
+        <input type="radio" name="assessment" value="差" id="assess-bad">
+        <label for="assess-bad">差</label>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ Tab 3: 周报生成 ═══ -->
+<div class="tab-content" id="tab-report">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-icon">◷</span>
+      <h3>选择周次</h3>
+    </div>
+    <div class="form-row">
+      <input type="date" id="weekPicker" style="flex:0 1 200px;">
+      <span class="text-dim">（选择该周的周一）</span>
+      <button class="btn btn-outline" onclick="loadWeekData()">加载本周数据</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:12px;">一、上周拟定的本周计划</h3>
+    <div class="section-editor">
+      <textarea id="sec-plan" placeholder="例如：1. 测试拉曼…&#10;2. 安排新结构器件制备…"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:12px;">二、本周详细研究进展</h3>
+    <div class="section-editor">
+      <textarea id="sec-progress" placeholder="自动汇总本周记录，也可手动修改…"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:12px;">三、后续待解决的问题或研究方案调整</h3>
+    <div class="section-editor">
+      <textarea id="sec-pending" placeholder="例如：1. 优化固态离子学器件实验流程"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:12px;">四、下周详细计划</h3>
+    <div class="section-editor">
+      <textarea id="sec-next_plan" placeholder="例如：1. 测试拉曼…&#10;2. 安排新结构器件制备…"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:12px;">五、本人本周各课题进展自评（好、中、差）</h3>
+    <div class="section-editor">
+      <textarea id="sec-assessment" placeholder="例如：1. 基于二维材料的离子学器件研究（中）"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="font-size:13px;font-weight:500;color:var(--accent);margin-bottom:12px;">六、成果发表时间节点</h3>
+    <div id="milestonesEdit"></div>
+  </div>
+
+  <div class="generate-bar">
+    <button class="btn btn-success" onclick="saveAndGenerate()">
+      保存并生成周报（PPTX + PDF）
+    </button>
+    <div id="generateResult"></div>
+  </div>
+</div>
+
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <h3>编辑记录</h3>
+    <div class="form-group">
+      <label>内容</label>
+      <input type="text" id="editContent">
+    </div>
+    <div class="form-group">
+      <label>日期</label>
+      <input type="date" id="editDate">
+    </div>
+    <div class="form-group">
+      <label>类别</label>
+      <select id="editCategory"><option value="todo">待办</option><option value="experiment">实验</option></select>
+    </div>
+    <div style="margin-top:18px;">
+      <button class="btn btn-primary" id="editSaveBtn">保存</button>
+      <button class="btn btn-outline" onclick="closeModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══ helpers ═══
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => document.querySelectorAll(s);
+const api = (url, opts={}) => fetch(url, {headers:{'Content-Type':'application/json'}, ...opts})
+  .then(r => r.ok ? r.json() : r.json().then(e => {throw new Error(e.detail||'Error')}));
+
+function today() { return new Date().toISOString().slice(0,10); }
+function fmtDate(d) { const p=String(d).split('-'); return `${p[1]}-${p[2]}`; }
+function weekMonday(d) { const dt=new Date(d); const day=dt.getDay(); const diff=dt.getDate()-day+(day===0?-6:1); return new Date(dt.setDate(diff)).toISOString().slice(0,10); }
+function weekDays(mon) { const days=[]; const d=new Date(mon); for(let i=0;i<7;i++){const dd=new Date(d);dd.setDate(d.getDate()+i);days.push(dd.toISOString().slice(0,10));} return days; }
+
+// ═══ tabs ═══
+$$('.tab-btn').forEach(b => b.addEventListener('click', function(){
+  $$('.tab-btn').forEach(x => x.classList.remove('active'));
+  $$('.tab-content').forEach(x => x.classList.remove('active'));
+  this.classList.add('active');
+  $('#tab-'+this.dataset.tab).classList.add('active');
+  if(this.dataset.tab === 'today') loadToday();
+  if(this.dataset.tab === 'week') loadWeekOverview();
+  if(this.dataset.tab === 'report') { $('#weekPicker').value = weekMonday(today()); }
+}));
+
+// ═══ header ═══
+function updateHeader() {
+  const now = new Date();
+  const wd = ['日','一','二','三','四','五','六'];
+  $('#headerDate').textContent =
+    `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日 · 星期${wd[now.getDay()]}`;
+}
+updateHeader();
+setInterval(updateHeader, 60000);
+
+// ═══ Today tab ═══
+async function loadToday() {
+  $('#todayDate').textContent = today();
+  const [todos, exps, files] = await Promise.all([
+    api(`/api/todos?date_from=${today()}&date_to=${today()}`),
+    api(`/api/experiments?date_from=${today()}&date_to=${today()}`),
+    api(`/api/files?date_from=${today()}&date_to=${today()}`),
+  ]);
+  const items = [...todos.map(t => ({...t, _type:'todo'})), ...exps.map(e => ({...e, _type:'exp'}))];
+  items.sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+
+  const sel = $('#fileLinkType');
+  sel.innerHTML = '<option value="">关联到实验记录（可选）</option>' +
+    exps.map(e => `<option value="exp-${e.id}">${esc(e.title)}</option>`).join('') +
+    todos.filter(t=>t.category==='experiment').map(t => `<option value="todo-${t.id}">${esc(t.content).slice(0,30)}</option>`).join('');
+
+  const container = $('#todoList');
+  if(items.length === 0) {
+    container.innerHTML = '<div class="empty">今天还没有记录，开始添加吧</div>';
+  } else {
+    container.innerHTML = items.map(item => {
+      const linkedFiles = files.filter(f =>
+        (f.todo_id && f.todo_id === item.id) || (f.experiment_id && f.experiment_id === item.id)
+      );
+      const fileTags = linkedFiles.length
+        ? ` <span style="font-size:10px;color:var(--teal);">⬇${linkedFiles.length}</span>`
+        : '';
+      if(item._type === 'todo') {
+        const done = item.status === 'completed';
+        const badge = item.category === 'experiment'
+          ? '<span class="badge badge-experiment">实验</span>'
+          : '<span class="badge badge-todo">待办</span>';
+        return `<div class="todo-item">
+          <input type="checkbox" class="todo-check" id="t${item.id}" ${done?'checked':''}
+            onchange="toggleTodo(${item.id}, this.checked)">
+          <label for="t${item.id}"></label>
+          <span class="content ${done?'done':''}">${esc(item.content)}</span>
+          ${badge}${fileTags}
+          <span class="meta">${fmtDate(item.date)}</span>
+          <button class="btn btn-sm btn-outline" onclick="openEditModal(${item.id},'todo')">编辑</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteTodo(${item.id})">删除</button>
+        </div>
+        ${linkedFiles.map(f => fileRowHtml(f)).join('')}`;
+      } else {
+        return `<div class="todo-item" style="background:rgba(77,158,154,.03);">
+          <span style="color:var(--teal);font-size:14px;min-width:18px;">◆</span>
+          <span style="font-weight:500;flex:1;font-size:13px;">${esc(item.title)}</span>
+          <span class="badge badge-experiment">实验日志</span>${fileTags}
+          <span class="meta">${fmtDate(item.date)}</span>
+          <button class="btn btn-sm btn-outline" onclick="openEditModal(${item.id},'exp')">编辑</button>
+          <button class="btn btn-sm btn-danger" onclick="deleteExperiment(${item.id})">删除</button>
+        </div>
+        ${item.description ? `<div style="padding:4px 36px;font-size:12px;color:var(--text-dim);">${esc(item.description)}</div>` : ''}
+        ${item.equipment ? `<div style="padding:2px 36px;font-size:11px;color:var(--text-muted);">设备：${esc(item.equipment)}</div>` : ''}
+        ${item.results ? `<div style="padding:2px 36px 10px;font-size:12px;color:var(--text);">→ ${esc(item.results)}</div>` : ''}
+        ${linkedFiles.map(f => fileRowHtml(f)).join('')}`;
+      }
+    }).join('');
+  }
+
+  renderFileList(files);
+}
+
+function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+
+async function addTodo() {
+  const content = $('#todoInput').value.trim();
+  if(!content) return;
+  const category = $('#todoCategory').value;
+  await api('/api/todos', {method:'POST', body:JSON.stringify({
+    date: today(), content, category, status:'pending'
+  })});
+  $('#todoInput').value = '';
+  loadToday();
+}
+
+async function toggleTodo(id, checked) {
+  await api(`/api/todos/${id}`, {method:'PUT',
+    body:JSON.stringify({status: checked?'completed':'pending'})});
+  loadToday();
+}
+
+async function deleteTodo(id) {
+  if(!confirm('确定删除？')) return;
+  await api(`/api/todos/${id}`, {method:'DELETE'});
+  loadToday();
+}
+
+async function addExperiment() {
+  const title = $('#expTitle').value.trim();
+  if(!title) return;
+  await api('/api/experiments', {method:'POST', body:JSON.stringify({
+    date: today(), title, description: $('#expDesc').value,
+    equipment: $('#expEquipment').value, results: $('#expResults').value,
+    tags: $('#expTags').value
+  })});
+  $('#expTitle').value=''; $('#expDesc').value='';
+  $('#expEquipment').value=''; $('#expResults').value=''; $('#expTags').value='';
+  loadToday();
+}
+
+async function deleteExperiment(id) {
+  if(!confirm('确定删除？')) return;
+  await api(`/api/experiments/${id}`, {method:'DELETE'});
+  loadToday();
+}
+
+// ═══ File helpers ═══
+function fileRowHtml(f) {
+  const size = f.file_size > 1024*1024
+    ? (f.file_size/1024/1024).toFixed(1)+' MB'
+    : f.file_size > 1024 ? (f.file_size/1024).toFixed(1)+' KB' : f.file_size+' B';
+  return `<div style="padding:4px 36px;font-size:12px;display:flex;align-items:center;gap:8px;">
+    <span style="color:var(--text-muted);">└</span>
+    <a href="/api/files/${f.id}/download" class="file-link">${esc(f.original_name)}</a>
+    <span style="color:var(--text-muted);font-size:10px;">${size}</span>
+    <button class="btn btn-sm btn-danger" onclick="deleteFile(${f.id})" style="font-size:10px;padding:2px 9px;">删除</button>
+  </div>`;
+}
+
+function renderFileList(files) {
+  const div = $('#todayFiles');
+  if(!div) return;
+  if(files.length === 0) {
+    div.innerHTML = '<div class="empty" style="padding:16px;">暂无上传文件</div>';
+    return;
+  }
+  const orphan = files.filter(f => !f.todo_id && !f.experiment_id);
+  const linked = files.filter(f => f.todo_id || f.experiment_id);
+  let html = '';
+  if(linked.length) {
+    html += '<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px;letter-spacing:.3px;">关联文件</div>';
+    html += linked.map(f => fileRowHtml(f)).join('');
+  }
+  if(orphan.length) {
+    if(linked.length) html += '<div style="font-size:11px;color:var(--text-muted);margin:10px 0 6px;letter-spacing:.3px;">独立文件</div>';
+    html += orphan.map(f => fileRowHtml(f)).join('');
+  }
+  div.innerHTML = html;
+}
+
+// ═══ Drag & Drop + Clipboard ═══
+let pendingFiles = [];
+
+const dropZone = document.getElementById('dropZone');
+if(dropZone) {
+  dropZone.addEventListener('click', () => $('#fileInput').click());
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    addToQueue(e.dataTransfer.files);
+  });
+}
+
+$('#fileInput').addEventListener('change', function() {
+  addToQueue(this.files);
+  this.value = '';
+});
+
+function addToQueue(fileList) {
+  for(const f of fileList) pendingFiles.push(f);
+  renderQueue();
+}
+
+function renderQueue() {
+  const div = $('#uploadQueue');
+  const btn = $('#uploadBtn');
+  if(pendingFiles.length === 0) {
+    div.innerHTML = '';
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = 'inline-block';
+  btn.textContent = `上传全部文件（${pendingFiles.length}）`;
+  div.innerHTML = pendingFiles.map((f, i) => {
+    const size = f.size > 1024*1024 ? (f.size/1024/1024).toFixed(1)+' MB'
+      : f.size > 1024 ? (f.size/1024).toFixed(1)+' KB' : f.size+' B';
+    return `<div class="queue-item">
+      <span class="q-name">⬇ ${esc(f.name)}</span>
+      <span class="q-status">${size}</span>
+      <span class="q-remove" onclick="removeFromQueue(${i})">✕</span>
+    </div>`;
+  }).join('');
+}
+
+function removeFromQueue(i) { pendingFiles.splice(i, 1); renderQueue(); }
+
+async function uploadFiles() {
+  if(!pendingFiles.length) return;
+  const linkVal = $('#fileLinkType').value;
+  const btn = $('#uploadBtn');
+  btn.disabled = true; btn.textContent = '上传中…';
+
+  let ok = 0, fail = 0;
+  for(const file of pendingFiles) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('date', today());
+    if(linkVal.startsWith('exp-')) formData.append('experiment_id', linkVal.slice(4));
+    else if(linkVal.startsWith('todo-')) formData.append('todo_id', linkVal.slice(5));
+    try {
+      const r = await fetch('/api/files/upload', {method:'POST', body:formData});
+      if(r.ok) ok++; else fail++;
+    } catch(e) { fail++; }
+  }
+  pendingFiles = [];
+  renderQueue();
+  btn.disabled = false;
+  loadToday();
+  if(fail) alert(`上传完成：${ok}个成功，${fail}个失败`);
+}
+
+document.addEventListener('paste', (e) => {
+  const tabToday = $('#tab-today');
+  if(!tabToday || !tabToday.classList.contains('active')) return;
+  const items = e.clipboardData.items;
+  for(const item of items) {
+    if(item.type.startsWith('image/')) {
+      e.preventDefault();
+      const blob = item.getAsFile();
+      const ext = item.type.split('/')[1] || 'png';
+      const ts = new Date().toISOString().replace(/[:.]/g,'-');
+      const file = new File([blob], `clipboard_${ts}.${ext}`, {type: item.type});
+      pendingFiles.push(file);
+      renderQueue();
+      break;
+    }
+  }
+});
+
+async function deleteFile(id) {
+  if(!confirm('确定删除该文件？')) return;
+  await fetch(`/api/files/${id}`, {method:'DELETE'});
+  loadToday();
+}
+
+// ═══ Edit Modal ═══
+function openEditModal(id, type) {
+  $('#editModal').classList.add('show');
+  const endpoint = type === 'todo' ? `/api/todos?date_from=2000-01-01&date_to=2099-12-31` : `/api/experiments?date_from=2000-01-01&date_to=2099-12-31`;
+  api(endpoint).then(items => {
+    const item = items.find(i => i.id === id);
+    if(!item) return;
+    if(type === 'todo') {
+      $('#editContent').value = item.content;
+      $('#editCategory').value = item.category;
+      $('#editDate').value = item.date;
+      $('#editCategory').parentElement.style.display = 'block';
+    } else {
+      $('#editContent').value = item.title;
+      $('#editCategory').parentElement.style.display = 'none';
+      $('#editDate').value = item.date;
+    }
+    $('#editSaveBtn').onclick = async () => {
+      const url = type === 'todo' ? `/api/todos/${id}` : `/api/experiments/${id}`;
+      const body = type === 'todo'
+        ? {content: $('#editContent').value, category: $('#editCategory').value}
+        : {title: $('#editContent').value};
+      await api(url, {method:'PUT', body:JSON.stringify(body)});
+      closeModal();
+      loadToday();
+    };
+  });
+}
+function closeModal() { $('#editModal').classList.remove('show'); }
+
+// ═══ Week Overview ═══
+async function loadWeekOverview() {
+  const mon = weekMonday(today());
+  const days = weekDays(mon);
+  const weekEnd = days[6];
+
+  const todos = await api(`/api/todos?date_from=${mon}&date_to=${weekEnd}`);
+  const exps = await api(`/api/experiments?date_from=${mon}&date_to=${weekEnd}`);
+
+  const byDay = {};
+  days.forEach(d => byDay[d] = []);
+  todos.forEach(t => { if(byDay[t.date]) byDay[t.date].push({...t, _type:'todo'}); });
+  exps.forEach(e => { if(byDay[e.date]) byDay[e.date].push({...e, _type:'exp'}); });
+
+  const wdNames = ['一','二','三','四','五','六','日'];
+  $('#weekGrid').innerHTML = days.map((d,i) => {
+    const isToday = d === today();
+    const items = byDay[d] || [];
+    const doneCount = items.filter(x => x._type==='todo' && x.status==='completed').length;
+    const totalCount = items.length;
+    return `<div class="day-card ${isToday?'today':''}">
+      <div class="day-label">周${wdNames[i]}${totalCount?` · ${totalCount}项`:(items.length?'':'' )}</div>
+      <div class="day-date">${fmtDate(d)}</div>
+      ${items.map(item =>
+        item._type === 'todo'
+          ? `<div class="day-item ${item.status==='completed'?'done':''}">${item.status==='completed'?'✓':'○'} ${esc(item.content)}</div>`
+          : `<div class="day-item" style="color:var(--teal);">◆ ${esc(item.title)}</div>`
+      ).join('')}
+      ${items.length === 0 ? '<div class="day-item" style="color:var(--text-muted);">—</div>' : ''}
+    </div>`;
+  }).join('');
+
+  if(exps.length === 0) {
+    $('#weekExperiments').innerHTML = '<div class="empty">本周暂无实验记录</div>';
+  } else {
+    $('#weekExperiments').innerHTML = exps.map(e => `
+      <div class="exp-summary">
+        <strong>${fmtDate(e.date)} &nbsp; ${esc(e.title)}</strong>
+        ${e.equipment ? `<span style="color:var(--text-muted);margin-left:6px;font-size:11px;">${esc(e.equipment)}</span>` : ''}
+        ${e.description ? `<div style="font-size:12px;color:var(--text-dim);margin-top:4px;">${esc(e.description)}</div>` : ''}
+        ${e.results ? `<div style="font-size:12px;color:var(--text);margin-top:2px;">→ ${esc(e.results)}</div>` : ''}
+      </div>
+    `).join('');
+  }
+
+  const sections = await api(`/api/sections?week_start=${mon}&section_type=assessment`);
+  if(sections.length > 0) {
+    const val = sections[0].content;
+    const match = val.match(/（(.)）/);
+    if(match) {
+      const radio = document.querySelector(`input[name="assessment"][value="${match[1]}"]`);
+      if(radio) radio.checked = true;
+    }
+  }
+}
+
+// ═══ Report tab ═══
+async function loadWeekData() {
+  const mon = $('#weekPicker').value || weekMonday(today());
+  const summary = await api(`/api/week-summary?week_start=${mon}`);
+
+  if(!$('#sec-plan').value) {
+    const prevMon = new Date(new Date(mon).getTime() - 7*86400000).toISOString().slice(0,10);
+    const prevSections = await api(`/api/sections?week_start=${prevMon}&section_type=next_plan`);
+    if(prevSections.length > 0) $('#sec-plan').value = prevSections[0].content;
+  }
+
+  const progressLines = [];
+  summary.experiments.forEach(e => {
+    progressLines.push(`${e.date.slice(5)} ${e.title}`);
+    if(e.description) progressLines.push(`  ${e.description}`);
+  });
+  summary.todos.forEach(t => {
+    const prefix = t.status === 'completed' ? '✓' : '○';
+    progressLines.push(`${t.date.slice(5)} ${prefix} ${t.content}`);
+  });
+  $('#sec-progress').value = summary.sections.progress || progressLines.join('\n') || '';
+
+  $('#sec-pending').value = summary.sections.pending || '';
+  $('#sec-next_plan').value = summary.sections.next_plan || '';
+  $('#sec-assessment').value = summary.sections.assessment || '';
+
+  renderMilestones(summary.milestones);
+}
+
+function renderMilestones(milestones) {
+  $('#milestonesEdit').innerHTML = milestones.map(m => `
+    <div class="milestone-item">
+      <strong>${esc(m.name)}</strong>
+      <div style="display:flex;gap:16px;margin-top:8px;">
+        <label>计划日期
+          <input type="date" value="${m.planned_date||''}" onchange="updateMilestoneDate(${m.id},'planned',this.value)">
+        </label>
+        <label>实际日期
+          <input type="date" value="${m.actual_date||''}" onchange="updateMilestoneDate(${m.id},'actual',this.value)">
+        </label>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function updateMilestoneDate(id, field, value) {
+  const milestones = await api('/api/milestones');
+  const m = milestones.find(x => x.id === id);
+  if(!m) return;
+  await api(`/api/milestones/${id}`, {method:'PUT', body:JSON.stringify({
+    name: m.name, type: m.type,
+    planned_date: field === 'planned' ? value : (m.planned_date || ''),
+    actual_date: field === 'actual' ? value : (m.actual_date || ''),
+    notes: m.notes || '', sort_order: m.sort_order
+  })});
+}
+
+async function saveAndGenerate() {
+  const mon = $('#weekPicker').value || weekMonday(today());
+
+  const sections = ['plan', 'progress', 'pending', 'next_plan', 'assessment'];
+  for (const st of sections) {
+    const content = $(`#sec-${st}`).value.trim();
+    if(content) {
+      await api('/api/sections', {method:'POST', body:JSON.stringify({
+        week_start: mon, section_type: st, content
+      })});
+    }
+  }
+
+  const assessRadio = document.querySelector('input[name="assessment"]:checked');
+  if(assessRadio) {
+    const topic = $('#assessmentTopic').value;
+    await api('/api/sections', {method:'POST', body:JSON.stringify({
+      week_start: mon, section_type: 'assessment',
+      content: `1. ${topic}（${assessRadio.value}）`
+    })});
+  }
+
+  try {
+    $('#generateResult').innerHTML = '<div style="padding:14px;color:var(--accent);">⏳ 正在生成周报…</div>';
+    const result = await api('/api/generate-report', {method:'POST',
+      body:JSON.stringify({week_start: mon})});
+    $('#generateResult').innerHTML = `<div class="result-box">
+      ◉ 周报已生成<br>
+      <a href="/output/${encodeURIComponent(result.pptx.split('/').pop())}" target="_blank">⬇ PPTX</a>
+      <a href="/output/${encodeURIComponent(result.pdf.split('/').pop())}" target="_blank">⬇ PDF</a>
+      <br><span class="text-muted">文件保存在 weekly_logger/output/ 目录</span>
+    </div>`;
+  } catch(e) {
+    $('#generateResult').innerHTML = `<div style="color:var(--danger);padding:14px;">生成失败：${e.message}</div>`;
+  }
+}
+
+// ═══ init ═══
+$('#weekPicker').value = weekMonday(today());
+loadToday();
+</script>
+</body>
+</html>
