@@ -219,6 +219,14 @@ input[type="file"] { display:none; }
 .drop-zone .dz-text { font-size:13px; color:var(--text-dim); letter-spacing:.3px; }
 .drop-zone .dz-text strong { color:var(--accent); font-weight:500; }
 .upload-queue { margin-top:12px; }
+
+/* textarea drop zone for images */
+.textarea-drop-zone { transition: all .25s; }
+.textarea-drop-zone.drag-over {
+  border-color: var(--accent) !important;
+  box-shadow: inset 0 0 30px rgba(226,168,60,.06), 0 0 16px rgba(226,168,60,.1) !important;
+  background: rgba(226,168,60,.03) !important;
+}
 .upload-queue .queue-item {
   display:flex; align-items:center; gap:10px;
   padding:8px 14px; background:rgba(226,168,60,.05);
@@ -398,8 +406,8 @@ input[type="file"] { display:none; }
       <input type="text" id="expTitle" placeholder="实验标题" style="flex:2;">
       <input type="text" id="expEquipment" placeholder="使用设备" style="flex:1;">
     </div>
-    <textarea id="expDesc" placeholder="实验描述"></textarea>
-    <textarea id="expResults" placeholder="实验结果" style="margin-top:8px;"></textarea>
+    <textarea id="expDesc" class="textarea-drop-zone" placeholder="实验描述（可拖入图片）"></textarea>
+    <textarea id="expResults" class="textarea-drop-zone" placeholder="实验结果（可拖入或粘贴图片）" style="margin-top:8px;"></textarea>
     <div class="form-row" style="margin-top:10px;">
       <input type="text" id="expTags" placeholder="标签（逗号分隔）" style="flex:1;">
       <button class="btn btn-primary" onclick="addExperiment()">保存实验记录</button>
@@ -531,19 +539,38 @@ input[type="file"] { display:none; }
 
 <!-- Modal -->
 <div class="modal-overlay" id="editModal">
-  <div class="modal">
-    <h3>编辑记录</h3>
-    <div class="form-group">
+  <div class="modal" style="width:560px;">
+    <h3 id="editModalTitle">编辑记录</h3>
+    <div class="form-group" id="editGroupContent">
       <label>内容</label>
       <input type="text" id="editContent">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="editGroupDate">
       <label>日期</label>
       <input type="date" id="editDate">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="editGroupCategory">
       <label>类别</label>
       <select id="editCategory"><option value="todo">待办</option><option value="experiment">实验</option></select>
+    </div>
+    <!-- 实验日志专属字段（编辑待办时隐藏） -->
+    <div id="editExpFields" style="display:none;">
+      <div class="form-group">
+        <label>实验描述</label>
+        <textarea id="editExpDesc" style="min-height:60px;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>使用设备</label>
+        <input type="text" id="editExpEquipment">
+      </div>
+      <div class="form-group">
+        <label>实验结果</label>
+        <textarea id="editExpResults" class="textarea-drop-zone" style="min-height:60px;" placeholder="可拖入或粘贴图片"></textarea>
+      </div>
+      <div class="form-group">
+        <label>标签</label>
+        <input type="text" id="editExpTags" placeholder="逗号分隔">
+      </div>
     </div>
     <div style="margin-top:18px;">
       <button class="btn btn-primary" id="editSaveBtn">保存</button>
@@ -799,9 +826,71 @@ async function uploadFiles() {
   if(fail) alert(`上传完成：${ok}个成功，${fail}个失败`);
 }
 
+// ═══ Textarea inline image drop & paste ═══
+
+async function uploadInlineImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('date', today());
+  const r = await fetch('/api/files/upload', {method:'POST', body:formData});
+  if(!r.ok) throw new Error('upload failed');
+  const data = await r.json();
+  return data;
+}
+
+function insertAtCursor(textarea, text) {
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const before = textarea.value.substring(0, start);
+  const after = textarea.value.substring(end);
+  textarea.value = before + text + after;
+  textarea.selectionStart = textarea.selectionEnd = start + text.length;
+  textarea.focus();
+}
+
+async function handleImageDropOnTextarea(file, textarea) {
+  try {
+    const orig = textarea.placeholder;
+    textarea.placeholder = '⏳ 正在上传图片…';
+    textarea.style.opacity = '0.6';
+    const data = await uploadInlineImage(file);
+    const ref = `\n[📷 ${data.original_name}](/api/files/${data.id}/download)\n`;
+    insertAtCursor(textarea, ref);
+    textarea.placeholder = orig;
+    textarea.style.opacity = '';
+    // 刷新今日文件列表（异步，不阻塞）
+    api(`/api/files?date_from=${today()}&date_to=${today()}`).then(files => renderFileList(files));
+  } catch(e) {
+    textarea.placeholder = '上传失败，请重试';
+    textarea.style.opacity = '';
+  }
+}
+
+// 给实验描述和实验结果文本框绑定拖拽事件
+document.querySelectorAll('.textarea-drop-zone').forEach(ta => {
+  ta.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    ta.classList.add('drag-over');
+  });
+  ta.addEventListener('dragleave', () => {
+    ta.classList.remove('drag-over');
+  });
+  ta.addEventListener('drop', (e) => {
+    e.preventDefault();
+    ta.classList.remove('drag-over');
+    const files = e.dataTransfer.files;
+    if(files.length) handleImageDropOnTextarea(files[0], ta);
+  });
+});
+
+// 剪贴板粘贴：在 textarea 中粘贴图片 → 内联插入引用；在页面其他地方粘贴 → 加入上传队列
 document.addEventListener('paste', (e) => {
   const tabToday = $('#tab-today');
   if(!tabToday || !tabToday.classList.contains('active')) return;
+
+  const activeEl = document.activeElement;
+  const isTextarea = activeEl && activeEl.classList.contains('textarea-drop-zone');
+
   const items = e.clipboardData.items;
   for(const item of items) {
     if(item.type.startsWith('image/')) {
@@ -810,8 +899,15 @@ document.addEventListener('paste', (e) => {
       const ext = item.type.split('/')[1] || 'png';
       const ts = new Date().toISOString().replace(/[:.]/g,'-');
       const file = new File([blob], `clipboard_${ts}.${ext}`, {type: item.type});
-      pendingFiles.push(file);
-      renderQueue();
+
+      if(isTextarea) {
+        // 焦点在实验文本框 → 直接上传并插入引用
+        handleImageDropOnTextarea(file, activeEl);
+      } else {
+        // 其他地方 → 加入上传队列
+        pendingFiles.push(file);
+        renderQueue();
+      }
       break;
     }
   }
@@ -826,25 +922,45 @@ async function deleteFile(id) {
 // ═══ Edit Modal ═══
 function openEditModal(id, type) {
   $('#editModal').classList.add('show');
+
+  if(type === 'todo') {
+    $('#editModalTitle').textContent = '编辑待办';
+    $('#editGroupContent').style.display = 'block';
+    $('#editGroupCategory').style.display = 'block';
+    $('#editExpFields').style.display = 'none';
+  } else {
+    $('#editModalTitle').textContent = '编辑实验记录';
+    $('#editGroupContent').style.display = 'block';
+    $('#editGroupCategory').style.display = 'none';
+    $('#editExpFields').style.display = 'block';
+  }
+
   const endpoint = type === 'todo' ? `/api/todos?date_from=2000-01-01&date_to=2099-12-31` : `/api/experiments?date_from=2000-01-01&date_to=2099-12-31`;
   api(endpoint).then(items => {
     const item = items.find(i => i.id === id);
     if(!item) return;
+    $('#editDate').value = item.date;
     if(type === 'todo') {
       $('#editContent').value = item.content;
       $('#editCategory').value = item.category;
-      $('#editDate').value = item.date;
-      $('#editCategory').parentElement.style.display = 'block';
     } else {
       $('#editContent').value = item.title;
-      $('#editCategory').parentElement.style.display = 'none';
-      $('#editDate').value = item.date;
+      $('#editExpDesc').value = item.description || '';
+      $('#editExpEquipment').value = item.equipment || '';
+      $('#editExpResults').value = item.results || '';
+      $('#editExpTags').value = item.tags || '';
     }
     $('#editSaveBtn').onclick = async () => {
       const url = type === 'todo' ? `/api/todos/${id}` : `/api/experiments/${id}`;
       const body = type === 'todo'
         ? {content: $('#editContent').value, category: $('#editCategory').value}
-        : {title: $('#editContent').value};
+        : {
+            title: $('#editContent').value,
+            description: $('#editExpDesc').value,
+            equipment: $('#editExpEquipment').value,
+            results: $('#editExpResults').value,
+            tags: $('#editExpTags').value,
+          };
       await api(url, {method:'PUT', body:JSON.stringify(body)});
       closeModal();
       loadToday();
